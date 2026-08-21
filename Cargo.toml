@@ -1,0 +1,32 @@
+[workspace]
+resolver = "2"
+members = [
+    "proto/dgraph",
+    "dgraph-client",
+]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.97.1"
+
+[workspace.dependencies]
+# Test-only: starts throwaway Docker containers for the acceptance fixture.
+docker_utils = "0.3"
+prost = "0.14"
+rustls = { version = "0.23", default-features = false, features = ["ring", "tls12"] }
+serde_json = "1.0"
+tokio = "1"
+tonic = { version = "0.14", default-features = false, features = ["transport", "codegen", "router"] }
+tonic-prost = "0.14"
+tonic-prost-build = "0.14"
+tracing = "0.1"
+ureq = "3.3"
+urlencoding = "2"
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+panic = "abort"

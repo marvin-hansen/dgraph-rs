@@ -1,0 +1,47 @@
+load("@crates//:defs.bzl", "all_crate_deps")
+load("@rules_rs//rs:rust_library.bzl", "rust_library")
+
+package(default_visibility = ["//visibility:public"])
+
+# The in-repo proto binding is NOT a crates.io crate, so all_crate_deps(cargo_only = True) cannot
+# infer it; it has to be appended explicitly. The generated crate is named after the
+# proto_library target (proto_dgraph), which is what `use proto_dgraph::api` resolves to.
+BASE_DEPS = all_crate_deps(
+    cargo_only = True,
+    normal = True,
+) + ["//proto/dgraph:proto_dgraph_bindings"]
+
+# The three optional dependencies the `test-utils` feature turns on. Named here rather than
+# inferred, because whether all_crate_deps returns an optional dependency is a property of the
+# resolved feature set and this target is the one that decides that set.
+TEST_UTILS_DEPS = [
+    "@crates//:docker_utils",
+    "@crates//:serde_json",
+    "@crates//:ureq",
+]
+
+# The library as a consumer gets it. src/utils_test is excluded rather than merely cfg'd out:
+# the module is behind a feature this target does not enable, so its files are not inputs.
+rust_library(
+    name = "dgraph_client",
+    srcs = glob(
+        ["src/**/*.rs"],
+        exclude = ["src/utils_test/**"],
+    ),
+    crate_root = "src/lib.rs",
+    deps = BASE_DEPS,
+)
+
+# The same crate with the acceptance fixture compiled in.
+#
+# A SECOND TARGET, not a flag on the first. Two things force it: a rust_library has one feature
+# set, and a consumer of the client must not link a Docker client. Same crate_name, so a test
+# depending on this one sees exactly the crate that ships, plus `utils_test`.
+rust_library(
+    name = "dgraph_client_test_utils",
+    srcs = glob(["src/**/*.rs"]),
+    crate_features = ["test-utils"],
+    crate_name = "dgraph_client",
+    crate_root = "src/lib.rs",
+    deps = BASE_DEPS + [dep for dep in TEST_UTILS_DEPS if dep not in BASE_DEPS],
+)

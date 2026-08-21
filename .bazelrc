@@ -1,0 +1,43 @@
+# Bazel configuration for dgraph-rs.
+#
+# Host builds only. There is no remote execution, no remote cache and no cross-compilation
+# here: this repository is a Rust client library plus its generated protobuf bindings, so every
+# action runs on the machine that invoked Bazel, for that machine's platform. The one hermetic
+# toolchain that remains is the C compiler, because Rust links C -- `ring`, which tonic's TLS
+# stack pulls in -- and taking that compiler from the machine is what makes a build depend on
+# which machine ran it.
+#
+# A downstream consumer that DOES cross-compile does it in its own build, against its own
+# platforms and toolchains. Restating that machinery here would be a second copy to keep in step,
+# serving no target in this repository.
+
+# Write build outputs in a platform-specific directory; avoid outputs being wiped and rewritten
+# when switching between platforms.
+common --experimental_platform_in_output_dir
+common --noannounce_rc
+common --experimental_convenience_symlinks=clean
+common --color=yes
+common --ui_event_filters=-INFO
+common --enable_platform_specific_config
+
+build --keep_going
+build --jobs=auto
+build --show_timestamps
+
+# Standard test ergonomics: show failing logs and retry known flaky tests once.
+test --test_output=errors
+test --flaky_test_attempts=2
+
+# The acceptance test reads its endpoint from the environment (see src/utils_test). Forwarded
+# here rather than named on every invocation, and unset by default so a plain `bazel test` still
+# gets the container strategy against 127.0.0.1:9080.
+test --test_env=DGRAPH_TEST_STRATEGY
+test --test_env=DGRAPH_TEST_HOST
+test --test_env=DGRAPH_TEST_PORT
+test --test_env=DGRAPH_TEST_SSLMODE
+test --test_env=DGRAPH_TEST_CA_BUNDLE_URL
+test --test_env=DGRAPH_TEST_RUN_ID
+test --test_env=DGRAPH_ADMIN_PASSWORD
+
+# Allow developers to extend configuration locally (ignored in version control).
+try-import %workspace%/.bazelrc.local

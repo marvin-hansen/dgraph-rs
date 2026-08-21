@@ -1,0 +1,63 @@
+[package]
+name = "dgraph-client"
+version = "0.1.0"
+description = "Rust client for the Dgraph graph database"
+edition.workspace = true
+rust-version.workspace = true
+license = "Apache-2.0"
+repository = "https://github.com/marvin-hansen/dgraph-rs"
+autotests = false
+
+[features]
+default = []
+# The acceptance fixture in `src/utils_test`. Off by default so a consumer of the client does
+# not compile a Docker client, an HTTP agent and a JSON parser it will never call. `cargo test`
+# runs the client's own unit tests without it; `cargo test --features test-utils` adds the
+# fixture's tests and the acceptance test.
+test-utils = ["dep:docker_utils", "dep:serde_json", "dep:ureq"]
+
+[dependencies]
+# In-repo protobuf bindings. Internal dependency only: no generated type appears in a
+# public signature of this crate, so regenerating the bindings is not a breaking change for
+# consumers.
+proto_dgraph = { path = "../proto/dgraph" }
+# tls-ring provides ClientTlsConfig; tls-native-roots provides the system trust store used
+# by sslmode=verify-ca. Enabled per-crate rather than in [workspace.dependencies], because a
+# feature is a property of the consumer, not of the version.
+tonic = { workspace = true, features = ["tls-ring", "tls-native-roots"] }
+rustls = { workspace = true, features = ["ring"] }
+prost = { workspace = true }
+tokio = { workspace = true, features = ["sync", "rt"] }
+tracing = { workspace = true }
+urlencoding = { workspace = true }
+
+# --- test-utils only ---------------------------------------------------------
+# Local provisioning. Never reached by the `existing` strategy.
+docker_utils = { workspace = true, optional = true }
+ureq = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "sync", "time"] }
+
+# `autotests = false` above, so every test target is named here rather than inferred from the
+# top level of tests/. Without it Cargo would also try to build tests/utils_test/ as a target.
+
+# The client's own unit tests: types, parsing and error mapping. No feature, no infrastructure.
+[[test]]
+name = "lib_tests"
+path = "tests/lib_tests.rs"
+
+# The fixture's own unit tests: the strategy branch, the endpoint contract, the health report
+# parser and the error surface. Still pure logic -- no Docker, no network -- but the code under
+# test only exists with the feature on.
+[[test]]
+name = "utils_test_tests"
+path = "tests/utils_test_tests.rs"
+required-features = ["test-utils"]
+
+# Needs a running Dgraph: a Docker daemon, or one already serving.
+[[test]]
+name = "dgraph_container_test"
+path = "tests/dgraph_container_test.rs"
+required-features = ["test-utils"]

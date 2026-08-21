@@ -1,0 +1,96 @@
+module(
+    name = "dgraph_rs",
+    version = "0.0.0",
+    repo_name = "dgraph_rs",
+)
+
+# --- Bazel dependencies ------------------------------------------------------
+bazel_dep(name = "rules_rs", version = "0.0.106")
+bazel_dep(name = "rules_proto", version = "7.1.0")
+bazel_dep(name = "protobuf", version = "35.1", repo_name = "com_google_protobuf")
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "rules_cc", version = "0.2.22")
+bazel_dep(name = "llvm", version = "0.8.18")
+
+# --- Hermetic LLVM: the cc toolchain ----------------------------------------
+# github.com/hermeticbuild/hermetic-llvm, BCR module name literally "llvm".
+#
+# Rust needs a cc toolchain for linking and for C dependencies
+llvm = use_extension("@llvm//extensions:llvm.bzl", "llvm")
+
+# Matches the LLVM that rustc RUST_DEFAULT_VERSION below is built on. Confirmed with
+# `rustc --version --verbose`, which reports "LLVM version: 22.1.6". Keep the two in sync.
+llvm.version(llvm_version = "22.1.6")
+use_repo(llvm, "llvm-project")
+
+# The macOS sysroot. This pin is the one hermetic-llvm itself consumes (their MODULE.bazel at
+# v0.8.18), so the archive and the include list are known to agree. The Wayback entry is their
+# fallback: the preceding SDK's Apple URL started returning 503.
+osx = use_extension("@llvm//extensions:osx.bzl", "osx")
+osx.from_archive(
+    sha256 = "5f044578cd78a3a9b9c965a42d56bad609ee5d252e1d4e6aa7c42fc3f35fee7b",
+    strip_prefix = "Payload/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk",
+    type = "pkg",
+    urls = [
+        "https://swcdn.apple.com/content/downloads/09/08/047-91568-A_Y1CFZWQCD4/4xekpyz43i26dbp4enxfro8eb1q7wiujh5/CLTools_macOSNMOS_SDK.pkg",
+        "https://web.archive.org/web/20260512015547id_/https://swcdn.apple.com/content/downloads/09/08/047-91568-A_Y1CFZWQCD4/4xekpyz43i26dbp4enxfro8eb1q7wiujh5/CLTools_macOSNMOS_SDK.pkg",
+    ],
+)
+
+# `System` is not in the extension's default framework set, and every macOS EXECUTABLE needs it.
+osx.frameworks(names = [
+    "System",
+    "CoreFoundation",
+    "Foundation",
+    "Kernel",
+    "OSLog",
+    "Security",
+    "SystemConfiguration",
+])
+
+register_toolchains("@llvm//toolchain:all")
+
+# --- Rust toolchain bootstrap ------------------------------------------------
+rules_rs_rules_rust = use_extension("@rules_rs//rs:rules_rust.bzl", "rules_rust")
+use_repo(rules_rs_rules_rust, "rules_rust")
+
+RUST_DEFAULT_VERSION = "1.97.1"
+
+RUST_EDITION = "2024"
+
+toolchains = use_extension("@rules_rs//rs/toolchains:module_extension.bzl", "toolchains")
+toolchains.toolchain(
+    edition = RUST_EDITION,
+    version = RUST_DEFAULT_VERSION,
+)
+use_repo(toolchains, "default_rust_toolchains")
+
+register_toolchains("@default_rust_toolchains//...")
+
+# protoc, and the prost/tonic protoc plugins the generated bindings are produced by.
+register_toolchains(
+    "//build/rust/prost_toolchain",
+    "//build/rust/proto_toolchain",
+)
+
+# The triples the dependency graph is RESOLVED for -- which is not the same thing as
+# cross-compiling. rules_rs evaluates each crate's target-specific dependencies once per triple,
+# so a `[target.'cfg(unix)'.dependencies]` entry is present in the graph whichever of these
+# machines runs the build. Nothing here is ever built for a triple other than the host's.
+#
+# The three are the machines this repository is actually built on. No musl: nothing is statically
+# linked into a scratch image, so adding a libc would add a toolchain axis with no consumer.
+RUST_PLATFORMS = [
+    "aarch64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-unknown-linux-gnu",
+]
+
+crate = use_extension("@rules_rs//rs:extensions.bzl", "crate")
+crate.from_cargo(
+    name = "crates",
+    cargo_lock = "//:Cargo.lock",
+    cargo_toml = "//:Cargo.toml",
+    platform_triples = RUST_PLATFORMS,
+)
+use_repo(crate, "crates")

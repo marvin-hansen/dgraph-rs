@@ -1,0 +1,6 @@
+# Root package. The Cargo manifests are exported so //MODULE.bazel's crate.from_cargo can name
+# them as //:Cargo.toml and //:Cargo.lock.
+exports_files([
+    "Cargo.toml",
+    "Cargo.lock",
+])
