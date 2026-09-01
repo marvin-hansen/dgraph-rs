@@ -1,0 +1,21 @@
+Cargo.toml
+  s_cd562a848f9ab5::t_988a781d6c900c 19
+dgraph-client/src/types/connection_string/mod.rs
+  s_cd562a848f9ab5::t_ea5fdf48c2309a 168-178,180-237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b3a40b1070896db0ebff2aa9ed6f2d38b9cf7a96",
+  "prompts": {},
+  "sessions": {
+    "s_cd562a848f9ab5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cbadad40-a87c-4f64-b790-bfa9a329f132",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Marvin Hansen <marvin.hansen@gmail.com>"
+    }
+  }
+}
