@@ -10,8 +10,7 @@ use super::Txn;
 impl<State> Drop for Txn<State> {
     fn drop(&mut self) {
         if self.mutated && !self.finished {
-            tracing::warn!(
-                start_ts = self.start_ts,
+           dbg!(
                 "transaction dropped after mutating without commit or discard; server-side state \
                  will persist until the cluster times it out. Call commit() or discard()."
             );

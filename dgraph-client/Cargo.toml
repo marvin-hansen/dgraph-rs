@@ -17,19 +17,13 @@ default = []
 test-utils = ["dep:docker_utils", "dep:serde_json", "dep:ureq"]
 
 [dependencies]
-# In-repo protobuf bindings. Internal dependency only: no generated type appears in a
-# public signature of this crate, so regenerating the bindings is not a breaking change for
-# consumers.
+# In-repo protobuf bindings. Internal dependency only.
 proto_dgraph = { path = "../proto/dgraph" }
-# tls-ring provides ClientTlsConfig; tls-native-roots provides the system trust store used
-# by sslmode=verify-ca. Enabled per-crate rather than in [workspace.dependencies], because a
-# feature is a property of the consumer, not of the version.
+# tls-ring provides ClientTlsConfig; tls-native-roots provides the system trust store used by sslmode=verify-ca.
 tonic = { workspace = true, features = ["tls-ring", "tls-native-roots"] }
 rustls = { workspace = true, features = ["ring"] }
 prost = { workspace = true }
-tokio = { workspace = true, features = ["sync", "rt"] }
-tracing = { workspace = true }
-urlencoding = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
 
 # --- test-utils only ---------------------------------------------------------
 # Local provisioning. Never reached by the `existing` strategy.
@@ -39,9 +33,6 @@ serde_json = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "sync", "time"] }
-
-# `autotests = false` above, so every test target is named here rather than inferred from the
-# top level of tests/. Without it Cargo would also try to build tests/utils_test/ as a target.
 
 # The client's own unit tests: types, parsing and error mapping. No feature, no infrastructure.
 [[test]]

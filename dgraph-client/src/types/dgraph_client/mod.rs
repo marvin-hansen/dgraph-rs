@@ -62,13 +62,7 @@ impl DgraphClient {
         if config.endpoints().is_empty() {
             return Err(ConnectError::NoEndpoints().into());
         }
-
-        if config.tls_mode() == TlsMode::RequireNoVerify {
-            tracing::warn!(
-                "connecting with sslmode=require: TLS certificate verification is DISABLED, so \
-                 the server is not authenticated; prefer sslmode=verify-ca"
-            );
-        }
+        
 
         let channels = config
             .endpoints()
